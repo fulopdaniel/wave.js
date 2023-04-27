@@ -36,9 +36,11 @@ export declare class Wave {
     private _audioAnalyser;
     private _muteAudio;
     private _interacted;
+    private _isPaused;
     constructor(audioElement: AudioElement, canvasElement: HTMLCanvasElement, muteAudio?: boolean);
     private connectAnalyser;
     private _play;
     addAnimation(animation: IAnimation): void;
     clearAnimations(): void;
+    togglePause(): void;
 }
