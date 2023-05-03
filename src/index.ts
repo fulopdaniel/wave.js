@@ -54,7 +54,9 @@ export class Wave {
   private _audioAnalyser: AnalyserNode;
   private _muteAudio: boolean;
   private _interacted: boolean;
+  private _snapshot: Uint8Array;
   private _isPaused: boolean;
+  private _drawingManually: boolean;
 
   constructor(
     audioElement: AudioElement,
@@ -65,6 +67,9 @@ export class Wave {
     this._canvasContext = this._canvasElement.getContext("2d");
     this._muteAudio = muteAudio;
     this._interacted = false;
+    this._snapshot = null;
+    this._isPaused = false;
+    this._drawingManually = false;
 
     if (audioElement instanceof HTMLAudioElement) {
       this._audioElement = audioElement;
@@ -120,9 +125,9 @@ export class Wave {
     this._audioAnalyser.smoothingTimeConstant = 0.85;
     this._audioAnalyser.fftSize = 1024;
     let audioBufferData = new Uint8Array(this._audioAnalyser.frequencyBinCount);
-
+    this._snapshot = new Uint8Array(this._audioAnalyser.frequencyBinCount);
     let tick = () => {
-      if (this._isPaused) {
+      if (this._drawingManually) {
         window.requestAnimationFrame(tick);
         return;
       }
@@ -134,10 +139,37 @@ export class Wave {
         this._canvasContext.canvas.height
       );
       this._activeAnimations.forEach((animation) => {
-        animation.draw(audioBufferData, this._canvasContext);
+        animation.draw(
+          this._isPaused ? this._snapshot : audioBufferData,
+          this._canvasContext
+        );
       });
+      window.requestAnimationFrame(tick);
     };
     tick();
+  }
+
+  public drawManually(bufferData: Uint8Array): void {
+    this._drawingManually = true;
+    this._canvasContext.clearRect(
+      0,
+      0,
+      this._canvasContext.canvas.width,
+      this._canvasContext.canvas.height
+    );
+    this._activeAnimations.forEach((animation) => {
+      animation.draw(bufferData, this._canvasContext);
+    });
+  }
+
+  public clear(): void {
+    this._canvasContext.clearRect(
+      0,
+      0,
+      this._canvasContext.canvas.width,
+      this._canvasContext.canvas.height
+    );
+    this._drawingManually = true;
   }
 
   public addAnimation(animation: IAnimation): void {
@@ -148,7 +180,16 @@ export class Wave {
     this._activeAnimations = [];
   }
 
-  public togglePause(): void {
-    this._isPaused = !this._isPaused;
+  public pause(): void {
+    this._isPaused = true;
+    this._audioAnalyser.getByteFrequencyData(this._snapshot);
+  }
+
+  public resumeRealtimeDraw(): void {
+    this._drawingManually = false;
+  }
+
+  public play(): void {
+    this._isPaused = false;
   }
 }
